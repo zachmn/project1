@@ -19,72 +19,155 @@ tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
 
 ## Data Wrangling, Exploration, Visualization
 
-### Name and EID here
+### Zach Mann zm4272
 
 #### Introduction 
 
-Paragraph or two introducing your datasets and variables, why they are interesting to you, etc.
+  The datasets that I chose to use for this project both contain NBA statistics and were obtained from fivethirtyeight. I chose NBA statistics as basketball is the only major sport that I enjoy consistently watching and playing. It is also the sport that I have the most knowledge and understanding of advanced statistics in and I am familiar with some of fivethirtyeight's work with analysis of NBA statistics. I think a lot of what they've done in terms of creating new ways to evaluate player and team performance is really cool even though I'm not really into advanced metrics as much as some sports stats nerds like Nate Silver are. 
+  
+  The dataset titled "draymond" contains player names (player), the season that the data is from (season), the posessions played by that player (posessions), and the value for the DRAYMOND (Defensive Rating Accounting for Yielding Minimal Opnness by Nearest Defender) defensive rating developed by fivethirtyeight (draymond). This rating, named after Draymond Green who happens to have the highest DRAYMOND rating (with a minimum 10,000 posessions played) since the 2013-2014 NBA season, is designed to give a numerical rating to a player's shooting defense in order to quantify a very important aspect of a player's defensive effectiveness that has previously been unexplained in the stat line. 
+  
+  The other dataset which I renamed "nbadata" contains the players' names (player), a player id variable to give them a unique identifier (player_id), the season the stats displayed are from (season), the type variable is either regular season or playoff data (type), the players age on Feb. 1 of that season (age), the team played for (team_id), the players' primary position (pos), the team's efficiency rating (tmRtg), the franchise played for which is meant to account for changes in location and name of franchises throughout the years by giving a standard code for each franchise that may not match the team id (franch_id), games played (G), minutes played (Min), share of team minutes played (MP%), minutes per game (MPG), pace-adjusted points per 36 minutes (P/36), true shooting percentage (TS%), pace-adjusted assists per 36 minutes (A/36), pace-adjusted rebounds per 36 minutes (R/36), pace-adjusted steals plus blocks per 36 minutes (SB/36), pace-adjusted turnovers per 36 minutes (TO/36), offensive RAPTOR rating (Raptor O), defensive RAPTOR rating (Raptor D), total RAPTOR rating (Raptor +/-), total RAPTOR wins above replacement (Raptor WAR), player impact estimate (PIE%), PIE% using Alternate Win Score (AWS %), usage rate (USG%), assist rate (AST%), turnover Rate (TOV%), offensive Rebound Rate (ORB%), defensive Rebound Rate (DRB%), total rebound rate (TRB%), steal rate (STL%), block rate (BLK%), offensive rating= points produced per 100 possessions (ORtg), share of team possessions used (%Pos), defensive rating=points allowed per 100 possessions (DRtg), 2-point field goal percentage (2P%), 3-point field goal percentage 3P%), free throw percentage (FT%), share of field goal attempts that were 3-pointers (3PAr), ratio of free throw attempts to field goal attempts (FTar),	and player's effect on team pace (Pace+/-). There are a lot of variables there but they are generally pretty intuitive if you have a basic understanding of basketball stats. Many of the variables are advanced metrics computed to give further insight into a player's value rather than simply the traditional stats such as points, assists, rebounds, blocks, steals, etc. RAPTOR is another advanced metric created by fivethirtyeight that measures how well a player's team does when he is on and off the court, similar to a traditional +/- statistic that conveys how many points the team led or trailed by during the time that a particular player was on the court. The following columns are not included in the playoff data: tmRtg, MP%, P/36, A/36, R/36, SB/36, TO/36, PIE%, AWS%, ORtg, %Pos, DRtg, 2P%, 3P%, and FT%. 
+  
+  The variables will be further explained as they are analyzed later in this project in order for the results to be clearly understood by the reader regardless of prior knowledge. I expect that many of the defensive statistics will be positively correlated with DRAYMOND rating, some positions will have a considerably higher DRAYMOND rating than others (for example centers vs. point guards) due to their typical roles on the court, and that some offensive statistics will have a negative relationship with DRAYMOND ratings as it is rare for a player to excel at both defense and offense. 
+  
+  I renamed the variable from the original "nbadata" dataset for year to "season" and the variable for player name to "player" in order to match the "draymond" dataset so that I can join them by those variables later.
 
 ```{R}
-# read your datasets in here, e.g., with read_csv()
+library(readr)
+nba_data_historical <- read.csv("https://raw.githubusercontent.com/fivethirtyeight/nba-player-advanced-metrics/master/nba-data-historical.csv")
+
+library(fivethirtyeight)
+draymond <- fivethirtyeight::nba_draymond
+
+library(tidyverse)
+nba_data_historical %>% rename(season = year_id) %>% rename(player = name_common) -> nbadata
 
 ```
 
 #### Tidying: Reshaping
 
-If your datasets are tidy already, demonstrate that you can reshape data with pivot wider/longer here (e.g., untidy and then retidy). Alternatively, it may be easier to wait until the wrangling section so you can reshape your summary statistics. Note here if you are going to do this.
-
-```{R}
-# your tidying code (if applicable; can also wait until wrangling section)
-```
-
+My datasets are already tidy and in the exact format that I want them so I will make the joined dataset untidy and then retidy it in the next section's code.
     
 #### Joining/Merging
 
 ```{R}
-# your joining code
+draymond %>% inner_join(nbadata, by = c("player","season")) -> nbajoined
 
-# your joining code
+is.na(nbajoined) <- nbajoined == "NULL"
+
+nbadata %>% summarise(n_distinct(player))
+nbadata %>% summarise(n_distinct(season))
+draymond %>% summarise(n_distinct(player))
+draymond %>% summarise(n_distinct(season))
+
+nbajoined %>% pivot_longer(season) -> untidy_nba
+
+untidy_nba %>% pivot_wider(names_from = name, values_from = value) -> retidy_nba
 ```
 
-Discussions of joining here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
+I joined the two datasets by the player names variable and the season (year) variable as the stats for the players in both datasets were arranged by a particular players stats for a particular season. I performed an inner join as I only wanted to get matching rows from both datasets. I only had to rename the columns to match prior to the join because the name and year observations were reported in the exact same format in both datasets. There were many more observations in nbadata than draymond (28179 vs. 3009) as it covered many more seasons and created a row for both regular season and playoff stats and separate rows for each team that a player played for in a particular season (some players played for multiple teams in one season due to trades or being waived by one team and signed by another). This is also why there are more observations in the joined dataset than in draymond. There were 3346 unique player names and 44 unique seasons in nbadata and 974 unique players and 6 unique seasons in draymond. Those in draymond were kept after the join as they were all also included in nbadata while those not in draymond were dropped. Only the 6 seasons included in the draymond datasets will be able to be analyzed as they are common in both datasets. There are 967 unique players in the joined dataset as 7 of the players with data in draymond are not in nbadata. There are 42 columns from nbadata that are included along with the 2 columns that the datasets were joinde by. I changed all of the NULLs to NAs to potentially simplify later manipulation of the data. In order to untidy the joined data I pivoted longer to separate the season variable and then used pivot_wider to return it to its tidy state. 
 
 ####  Wrangling
 
 ```{R}
-# your wrangling code
+nbajoined %>% group_by(pos) %>% summarise(mean(draymond))
 
-# your wrangling code
+nbajoined %>% group_by(pos) %>% summarise(sd(draymond))
 
-# your wrangling code
+nbajoined %>% group_by(pos, team_id) %>% summarise(mean(draymond)) %>% glimpse()
+
+nbajoined %>% group_by(player) %>% summarise(max(draymond)) %>% glimpse()
+
+nbajoined %>% group_by(player) %>% summarise(min(draymond)) %>% glimpse()
+
+nbajoined %>% group_by(pos) %>% summarise(mean(`BLK.`))
+
+nbajoined %>% group_by(pos) %>% summarise(sd(`BLK.`))
+
+nbajoined %>% group_by(pos, team_id) %>% summarise(mean(`BLK.`)) %>% glimpse()
+
+nbajoined %>% group_by(player) %>% summarise(max(`BLK.`)) %>% glimpse()
+
+nbajoined %>% group_by(player) %>% summarise(min(`BLK.`)) %>% glimpse()
+
+nbajoined %>% group_by(pos) %>% summarise(mean(`Raptor.D`))
+
+nbajoined %>% group_by(pos) %>% summarise(sd(`Raptor.D`))
+
+nbajoined %>% group_by(pos, team_id) %>% summarise(mean(`Raptor.D`)) %>% glimpse()
+
+nbajoined %>% group_by(player) %>% summarise(max(`Raptor.D`)) %>% glimpse()
+
+nbajoined %>% group_by(player) %>% summarise(min(`Raptor.D`)) %>% glimpse()
+
+nbajoined %>% group_by(pos) %>% summarise(mean(draymond), mean(`BLK.`), mean(`Raptor.D`)) %>% knitr::kable()
+
+nbajoined %>% filter(player == "Draymond Green") %>% select(season, type, draymond, `Raptor.D`, `BLK.`, `STL.`) %>% arrange(desc(draymond))
+
+nbajoined %>% filter(possessions > 100) %>% summarise(n=n())
+
+nbajoined %>% mutate(ast_tov_ratio = `AST.`/`TOV.`) %>% summarise(ast_tov_ratio) %>% glimpse()
+
+as.character(nbajoined$player_id) -> nbastring
+
+str_count(nbastring, pattern = "^green") -> greencount
+
+nbajoined %>% group_by(player) %>% summarise(n()) %>% glimpse()
+
+nbajoined %>% group_by(pos) %>% summarise(n()) %>% glimpse()
+
+nbajoined %>% group_by(team_id) %>% summarise(n()) %>% glimpse()
+
+nbajoined %>% group_by(franch_id) %>% summarise(n()) %>% glimpse()
+
+nbajoined %>% group_by(player_id) %>% summarise(n()) %>% glimpse()
+
+nbajoined %>% group_by(type) %>% summarise(n()) %>% glimpse()
+
+colSums(is.na(nbajoined))
+
 ```
 
-Your discussion of wrangling section here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
+  In order to further analyze some of the defensive statistics in the joined dataset, I found the mean and standard deviation of DRAYMOND rating, block rate, and RAPTOR defensive rating grouped by position. I also found the max and min of each of those statistics grouped by player in order to evaluate the highs and lows of defensive performance for each player in the dataset. I created a table showing the means of each of these statistics grouped by position using the kable function. It seems that there are positive relationships between these variables as the more defensive-focused positions (SF, PF, C) had higher mean values for all of these metrics than the guards. I also found the mean DRAYMOND ratings grouped by position and team to show the shot defending of each position for each team to use as a way to evaluate the team's overall defense. I created a code that listed a variety of defensive metrics per season arranged in descending order by DRAYMOND rating for a particular player in order to compare their defensive performance in a particular season as measured by traditional metrics compared to the DRAYMOND rating. I used Draymond Green as the example player. The exact relationships of these variables are unclear at a glance as higher Raptor D, BLK%, or STL% don't necessarily directly result in higher DRAYMOND ratings. 
+  
+  I found the amount of rows with more than 100 posessions as I wanted to find a reasonable minimum amount of posessions to use in the plots in order to remove outliers. I also created a new function of assist rate to turnover rate ratio due to assist to turnover ratio being a common metric used to calculate a player's playmaking performance that was not included in this data. I created a string of the player_id column and used the str_count function to count which players ids, and therefore last names, started with "green". I created tables of counts for each level for each categorical variable (player, pos, team_id, franch_id, player_id, type). I also created a table that shows the number of NAs for each variable.
 
 
 #### Visualizing
 
 ```{R}
-# your plot 1
+nbajoined %>% filter(possessions > 100) %>% ggplot(aes(x = draymond, y = `BLK.`)) + geom_point(aes(color = pos)) + geom_smooth(method="lm") + scale_x_continuous(breaks = seq(-15,12.5,2.5)) + theme(plot.background = element_rect(fill = "azure")) + scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) + labs(title = "DRAYMOND vs. BLK%", x = "DRAYMOND", y = "BLK%")
 ```
 
-Your discussion of plot 1
+This plot maps the values for DRAYMOND rating and block rate (an estimate of the percentage of opponent 2-point field goal attempts blocked by the player while they are on the floor) against each other while also indicating the players' positions by color. The players used were filtered to only use those who played more than 100 possessions. There are 4440 observations with over 100 possessions as calculated in the wrangling section. This served to remove outliers whose extremely high or low DRAYMOND values were due to a very small sample size of possessions. A linear regression line was applied to this data in order to show the relationship. The resulting line indicates that there is a modest positive relationship between DRAYMOND rating and block rate, which was expected as the DRAYMOND rating evaluates a player's effectiveness at defending shots and blocking a shot is the most clear way that a shot is successfully defended. 
 
 ```{R}
-# your plot 2
+nbajoined %>% filter(possessions>100) %>% ggplot(aes(pos, draymond)) + geom_jitter() + geom_boxplot(color = "darkred") + stat_summary(fun=mean, color="darkred") + labs(title = "DRAYMOND by Position", x = "position", y = "DRAYMOND") + scale_y_continuous(breaks = seq(-15,12.5,2.5)) + theme(axis.line = element_line(size = 2, colour = "darkred"), plot.background = element_rect(fill = "grey90"))
 ```
 
-Your discussion of plot 2
+This is a box plot of DRAYMOND values grouped by position overlaying a jitter plot of the same data. Previously, in the introduction, it was predicted that there would be differences of DRAYMOND ratings based on position with the center position having significantly higher average ratings than point guards. This was proven true in this plot as the mean rating is clearly higher for centers. The guard positions tend to have lower ratings than the others which makes sense based on their typical roles and location on the court during the average possession. I filtered out players who played less than 100 possessions in order to remove outliers. 
 
 ```{R}
-# your plot 3
+if(!require(devtools)) install.packages("devtools")
+devtools::install_github("kassambara/ggcorrplot")
+
+library(ggcorrplot)
+
+nbajoined %>% select_if(is.numeric) -> nbanums
+
+corr <- round(cor(nbanums), 1)
+
+ggcorrplot(corr, hc.order = TRUE, type = "lower", lab = TRUE, lab_size = 3, method="circle", colors = c("red", "white", "green"), title="Correlogram of NBA Data", tl.cex = 9)
 ```
 
-Your discussion of plot 3
+This is a visualization of a correlation matrix made from the numeric columns in the nbajoined dataset. This isn't meant to fulfill all of the requirements for the plots I just thought this was cool and wanted to make one for my data. 
 
-#### Concluding Remarks
+```{r}
+nbajoined %>% filter(player == "Tim Duncan") %>% ggplot(aes(season, draymond)) + geom_line() + geom_point(size=3) + labs(title = "Tim Duncan DRAYMOND 2014-2016", x = "Year", y = "DRAYMOND") + scale_x_continuous(breaks = seq(2014,2016,1)) + theme(plot.background = element_rect(fill = "black"), axis.title.x=element_text(colour="white"), axis.title.y=element_text(colour="white"), axis.title = element_text(colour = "white"), axis.text = element_text(colour = "white"), title = element_text(colour = "white"))
+```
 
-If any!
+This is a line plot that shows the progression of a particular player's DRAYMOND rating by the year. I chose Tim Duncan to use as he is considered to be one of the best defensive players in NBA history and the dataset contains his final 3 seasons in the NBA. He continued to be a good defender in the final years of his career and was selected to the all-defensive second team after the 2014 season. I wanted to use this plot to evaluate the effectiveness of the DRAYMOND rating as a measure of a player's defensive impact by comparing it to the other defensive stats that Duncan recorded. I would have expected Duncan's DRAYMOND rating to decrease each year as his defense was clearly worse by every metric in 2016 compared to 2014, but the opposite trend is shown. This may mean that the DRAYMOND rating is not the most effective measure of a player's defensive impact. Alternatively, it might mean that the DRAYMOND rating is more effective at evaluating a player's shooting defense specifically compared to traditional defensive statistics that may offer a misleading narrative. I created this plot as a means to apply a similar method of qualitative analysis to any player in order to get a better sense of what the DRAYMOND rating really means in a practical setting. 
 
 
 
